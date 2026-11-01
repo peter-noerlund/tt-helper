@@ -13,6 +13,7 @@ if(PkgConfig_FOUND)
 endif()
 
 add_executable(tt-helper
+    src/base64_encode.cpp
     src/find_device.cpp
     src/install_fpga.cpp
     src/main.cpp

@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace imp_tool
+namespace tt_helper
 {
 
 class MicroPythonDevice
@@ -24,4 +24,4 @@ private:
     asio::serial_port m_serialPort;
 };
 
-} // namespace imp_tool
+} // namespace tt_helper

@@ -1,13 +1,15 @@
 #include "micro_python_device.h"
 
 #include <asio/buffer.hpp>
+#include <asio/read.hpp>
 #include <asio/read_until.hpp>
 #include <asio/write.hpp>
 
 #include <array>
 #include <cstdint>
+#include <stdexcept>
 
-namespace imp_tool
+namespace tt_helper
 {
 
 MicroPythonDevice::MicroPythonDevice(const std::string& devicePath)
@@ -46,4 +48,51 @@ void MicroPythonDevice::fini()
     asio::write(m_serialPort, asio::buffer(resetSequence));
 }
 
-} // namespace imp_tool
+std::string MicroPythonDevice::execute(std::string_view command)
+{
+    if (command.empty())
+    {
+        return {};
+    }
+
+    asio::write(m_serialPort, asio::buffer(command));
+
+    const auto commitCommand = std::to_array<const std::uint8_t>({0x04});
+    asio::write(m_serialPort, asio::buffer(commitCommand));
+
+    std::array<char, 2> okBuffer;
+    asio::read(m_serialPort, asio::buffer(okBuffer));
+
+    if (okBuffer[0] != 'O' || okBuffer[1] != 'K')
+    {
+        throw std::runtime_error("device did not return expected response");
+    }
+
+    std::string response;
+    auto cnt = asio::read_until(m_serialPort, asio::dynamic_buffer(response), "\x04>");
+    response.resize(cnt);
+
+    std::string_view responseView(response);
+
+    auto exceptionStart = responseView.find('\x04');
+    if (exceptionStart == std::string_view::npos)
+    {
+        throw std::runtime_error("Device returned invalid data");
+    }
+
+    auto exceptionEnd = responseView.find('\x04', exceptionStart + 1);
+    if (exceptionEnd == std::string_view::npos)
+    {
+        throw std::runtime_error("Device returned invalid data");
+    }
+
+    auto exception = responseView.substr(exceptionStart + 1, exceptionEnd - exceptionStart - 1);
+    if (!exception.empty())
+    {
+        throw std::runtime_error(std::format("Device threw exception: {}", exception));
+    }
+
+    return std::string(responseView.substr(exceptionEnd));
+}
+
+} // namespace tt_helper

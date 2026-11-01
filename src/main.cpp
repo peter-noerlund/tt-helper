@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <iostream>
+#include <filesystem>
 #include <format>
 #include <print>
 #include <stdexcept>
