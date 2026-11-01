@@ -14,6 +14,7 @@ class Fpga
 public:
     explicit Fpga(Board board, const std::string& devicePath, bool dryRun, bool verbose);
 
+    void run(const std::filesystem::path& filePath);
     void install(const std::filesystem::path& filePath);
     void start();
     void stop();

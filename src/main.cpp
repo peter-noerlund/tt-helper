@@ -25,7 +25,7 @@ int main(int argc, char** argv)
     bool verbose = false;
 
     auto cli = lyra::cli()
-        | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, install-fpga, start-fpga, stop-fpga)").choices("write-flash", "install-fpga", "start-fpga", "stop-fpga").required()
+        | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, run-fpga, install-fpga, start-fpga, stop-fpga)").choices("write-flash", "run-fpga", "install-fpga", "start-fpga", "stop-fpga").required()
         | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
         | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load")
         | lyra::opt(devicePath, "PATH")["-d"]["--device"]("Path to serial device.")
@@ -78,6 +78,17 @@ int main(int argc, char** argv)
             }
             FlashWriter::writeFlash(board, devicePath, filePath, dryRun, verbose);
         }
+        else if (toolName == "run-fpga")
+        {
+            if (filePath.empty())
+            {
+                throw std::invalid_argument("Missing filename");
+            }
+
+            Fpga fpga(board, devicePath, dryRun, verbose);
+            fpga.run(filePath);
+        }
+
         else if (toolName == "install-fpga")
         {
             if (filePath.empty())
