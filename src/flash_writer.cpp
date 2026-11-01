@@ -21,7 +21,7 @@ namespace tt_helper
 std::string FlashWriter::spiCommand(std::span<const std::uint8_t> data, std::size_t recvBytes, std::string_view indent)
 {
     std::string command = std::format(
-            "{0}spi_ss(0)\r\n"
+            "{0}spi_cs(0)\r\n"
             "{0}spi.write(binascii.a2b_base64(\"{1}\"))\r\n",
             indent, base64Encode(data));
     if (recvBytes > 0)
@@ -29,7 +29,7 @@ std::string FlashWriter::spiCommand(std::span<const std::uint8_t> data, std::siz
         std::format_to(std::back_inserter(command), "{}res = spi.read({})\r\n", indent, recvBytes);
     }
 
-    std::format_to(std::back_inserter(command), "{}spi_ss(1)\r\n", indent);
+    std::format_to(std::back_inserter(command), "{}spi_cs(1)\r\n", indent);
 
     return command;
 }
@@ -185,7 +185,7 @@ void FlashWriter::programFlash(MicroPythonDevice& device, const std::filesystem:
     std::fflush(stdout);
 
     std::uint32_t address = 0;
-    auto remainingSize = 0;
+    auto remainingSize = size;
     while (remainingSize != 0)
     {
         auto chunkSize = std::min<std::size_t>(remainingSize, 256);
@@ -216,7 +216,7 @@ void FlashWriter::programFlash(MicroPythonDevice& device, const std::filesystem:
 
 }
 
-void FlashWriter::writeFlash(Board board, const std::string& devicePath, const std::filesystem::path& filePath)
+void FlashWriter::writeFlash(Board board, const std::string& devicePath, const std::filesystem::path& filePath, bool dryRun, bool verbose)
 {
     static const std::array<int, 8> picoIcePins = {1, 3, 0, 2, 5, 7, 4, 6};
     static const std::array<int, 8> tt06Pins = {21, 22, 23, 24, 25, 26, 27, 28};
@@ -251,7 +251,7 @@ void FlashWriter::writeFlash(Board board, const std::string& devicePath, const s
         throw std::invalid_argument(std::format("File {} does not exist", filePath.string()));
     }
 
-    MicroPythonDevice device(devicePath);
+    MicroPythonDevice device(devicePath, dryRun, verbose);
 
     device.execute(initCommand(pins.subspan<0, 8>()));
 

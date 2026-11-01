@@ -22,12 +22,16 @@ int main(int argc, char** argv)
     std::string boardName;
     std::string devicePath;
     std::string filePath;
+    bool dryRun = false;
+    bool verbose = false;
 
     auto cli = lyra::cli()
         | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, install-fpga)").choices("write-flash", "install-fpga").required()
         | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load").required()
         | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
         | lyra::opt(devicePath, "PATH")["-d"]["--device"]("Path to serial device.")
+        | lyra::opt(dryRun)["--dry-run"]("Dry run")
+        | lyra::opt(verbose)["-v"]["--verbose"]("Be verbose")
         | lyra::help(showHelp);
 
     auto result = cli.parse({argc, argv});
@@ -69,7 +73,7 @@ int main(int argc, char** argv)
 
         if (toolName == "write-flash")
         {
-            FlashWriter::writeFlash(board, devicePath, filePath);
+            FlashWriter::writeFlash(board, devicePath, filePath, dryRun, verbose);
         }
         else if (toolName == "install-fpga")
         {

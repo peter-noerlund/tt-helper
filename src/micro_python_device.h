@@ -11,7 +11,7 @@ namespace tt_helper
 class MicroPythonDevice
 {
 public:
-    explicit MicroPythonDevice(const std::string& devicePath);
+    explicit MicroPythonDevice(const std::string& devicePath, bool dryRun, bool verbose);
     ~MicroPythonDevice();
 
     std::string execute(std::string_view command);
@@ -21,7 +21,9 @@ private:
     void fini();
 
     asio::io_context m_context;
-    asio::serial_port m_serialPort;
+    std::optional<asio::serial_port> m_serialPort;
+    bool m_dryRun;
+    bool m_verbose;
 };
 
 } // namespace tt_helper
