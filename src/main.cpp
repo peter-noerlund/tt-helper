@@ -1,7 +1,7 @@
 #include "board.h"
+#include "flash_writer.h"
 #include "find_device.h"
 #include "install_fpga.h"
-#include "write_flash.h"
 
 #include <lyra/lyra.hpp>
 
@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     auto cli = lyra::cli()
         | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, install-fpga)").choices("write-flash", "install-fpga").required()
         | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load").required()
-        | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-etr").required()
+        | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
         | lyra::opt(devicePath, "PATH")["-d"]["--device"]("Path to serial device.")
         | lyra::help(showHelp);
 
@@ -49,6 +49,10 @@ int main(int argc, char** argv)
         {
             board = Board::PicoIce;
         }
+        else if (boardName == "tt-06")
+        {
+            board = Board::TinyTapeout06;
+        }
         else if (boardName == "tt-etr")
         {
             board = Board::TinyTapeoutEtr;
@@ -65,7 +69,7 @@ int main(int argc, char** argv)
 
         if (toolName == "write-flash")
         {
-            writeFlash(board, devicePath, filePath);
+            FlashWriter::writeFlash(board, devicePath, filePath);
         }
         else if (toolName == "install-fpga")
         {

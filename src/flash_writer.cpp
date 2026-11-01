@@ -1,4 +1,4 @@
-#include "write_flash.h"
+#include "flash_writer.h"
 
 #include "base64_encode.h"
 #include "micro_python_device.h"
@@ -18,7 +18,7 @@
 namespace tt_helper
 {
 
-static std::string spiCommand(std::span<const std::uint8_t> data, std::size_t recvBytes = 0, std::string_view indent = {})
+std::string FlashWriter::spiCommand(std::span<const std::uint8_t> data, std::size_t recvBytes, std::string_view indent)
 {
     std::string command = std::format(
             "{0}spi_ss(0)\r\n"
@@ -34,12 +34,12 @@ static std::string spiCommand(std::span<const std::uint8_t> data, std::size_t re
     return command;
 }
 
-static std::string writeEnableCommand(std::string_view indent = {})
+std::string FlashWriter::writeEnableCommand(std::string_view indent)
 {
     return spiCommand(std::to_array<std::uint8_t>({0x06}), 0, indent);
 }
 
-static std::string sleepCommand(std::chrono::nanoseconds delay, std::string_view indent = {})
+std::string FlashWriter::sleepCommand(std::chrono::nanoseconds delay, std::string_view indent)
 {
     using namespace std::chrono_literals;
 
@@ -58,7 +58,7 @@ static std::string sleepCommand(std::chrono::nanoseconds delay, std::string_view
     }
 }
 
-static std::string waitForWriteCommand(std::chrono::nanoseconds delay, std::string_view indent = {})
+std::string FlashWriter::waitForWriteCommand(std::chrono::nanoseconds delay, std::string_view indent)
 {
     return std::format(
             "{0}while True:\r\n"
@@ -72,40 +72,12 @@ static std::string waitForWriteCommand(std::chrono::nanoseconds delay, std::stri
     );
 }
 
-void writeFlash(Board board, const std::string& devicePath, const std::filesystem::path& filePath)
+std::string FlashWriter::initCommand(std::span<const int, 8> pins)
 {
-    using namespace std::chrono_literals;
-
-    static const std::array<int, 8> picoIcePins = {1, 3, 0, 2, 5, 7, 4, 6};
-    std::span<const int> pins;
-
-    switch (board)
-    {
-        case Board::PicoIce:
-            pins = picoIcePins;
-            break;
-
-        case Board::TinyTapeoutEtr:
-            [[fallthrough]];
-
-        case Board::Unknown:
-            break;
-    }
-
-    if (pins.empty())
-    {
-        throw std::invalid_argument("Unsupported board");
-    }
-
-    if (!std::filesystem::exists(filePath))
-    {
-        throw std::invalid_argument(std::format("File {} does not exist", filePath.string()));
-    }
-
-    MicroPythonDevice device(devicePath);
-
-    device.execute(std::format(
+    return std::format(
         "from machine import Pin, SoftSPI\r\n"
+        "import binascii\r\n"
+        "import time\r\n"
         "spi_cs = Pin({})\r\n"
         "spi_mosi = Pin({})\r\n"
         "spi_miso = Pin({})\r\n"
@@ -122,15 +94,38 @@ void writeFlash(Board board, const std::string& devicePath, const std::filesyste
         "spi_cs2(1)\r\n"
         "spi_io2.init(spi_io2.IN)\r\n"
         "spi_io2.init(spi_io3.IN)\r\n"
-        "spi = SoftSPI(sck=spi_sck, mosi=spi_mosi, miso=spi_miso)\r\n",
-        pins[0], pins[1], pins[2], pins[3], pins[4], pins[5], pins[6], pins[7]
-    ));
+        "spi = SoftSPI(sck=spi_sck, mosi=spi_mosi, miso=spi_miso)\r\n"
+        "{}"
+        "if res[0] != 0xEF or res[1] != 0x70 or res[2] != 0x18:\r\n"
+        "    raise Exception(\"Unsupported device\")\r\n",
+        pins[0], pins[1], pins[2], pins[3], pins[4], pins[5], pins[6], pins[7],
+        spiCommand(std::to_array<std::uint8_t>({0x9F}), 3)
+    );
+}
 
-    auto size = std::filesystem::file_size(filePath);
-    if (size > 16 * 1024 * 1024)
-    {
-        throw std::invalid_argument("File is too large");
-    }
+std::string_view FlashWriter::cleanupCommand()
+{
+    return
+        "del spi\r\n"
+        "spi_cs.init(spi_cs.IN)\r\n"
+        "spi_mosi.init(spi_mosi.IN)\r\n"
+        "spi_miso.init(spi_miso.IN)\r\n"
+        "spi_sck.init(spi_sck.IN)\r\n"
+        "spi_cs1.init(spi_cs1.IN)\r\n"
+        "spi_cs2.init(spi_cs2.IN)\r\n"
+        "del spi_cs\r\n"
+        "del spi_mosi\r\n"
+        "del spi_miso\r\n"
+        "del spi_sck\r\n"
+        "del spi_io2\r\n"
+        "del spi_io3\r\n"
+        "del spi_cs1\r\n"
+        "del spi_cs2\r\n";
+}
+
+void FlashWriter::eraseFlash(MicroPythonDevice& device, std::size_t size)
+{
+    using namespace std::chrono_literals;
 
     auto blocks64 = size / 65536;
     auto blocks32 = (size - blocks64 * 65536) / 32768;
@@ -172,7 +167,12 @@ void writeFlash(Board board, const std::string& devicePath, const std::filesyste
         }
     }
 
-    std::println("\rWriting: {:06x}/{:06x} ({}%)", address, size, address);
+    std::println("");
+}
+
+void FlashWriter::programFlash(MicroPythonDevice& device, const std::filesystem::path& filePath, std::size_t size)
+{
+    using namespace std::chrono_literals;
 
     std::ifstream file;
     file.exceptions(std::ifstream::badbit | std::ifstream::failbit);
@@ -181,10 +181,10 @@ void writeFlash(Board board, const std::string& devicePath, const std::filesyste
     std::vector<std::uint8_t> buffer;
     buffer.reserve(4 * 256);
 
-    std::print("Writing: 000000/{:06x} (0%)", size);
+    std::print("Programming: 000000/{:06x} (0%)", size);
     std::fflush(stdout);
 
-    address = 0;
+    std::uint32_t address = 0;
     auto remainingSize = 0;
     while (remainingSize != 0)
     {
@@ -208,29 +208,63 @@ void writeFlash(Board board, const std::string& devicePath, const std::filesyste
         address += chunkSize;
         remainingSize -= chunkSize;
 
-        std::print("\rWriting: {:06x}/{:06x} ({}%)", address, size, address * 100 / size);
+        std::print("\rProgramming: {:06x}/{:06x} ({}%)", address, size, address * 100 / size);
         std::fflush(stdout);
     }
 
     std::println("");
 
-    device.execute(
-        "del spi\r\n"
-        "spi_cs.init(spi_cs.IN)\r\n"
-        "spi_mosi.init(spi_mosi.IN)\r\n"
-        "spi_miso.init(spi_miso.IN)\r\n"
-        "spi_sck.init(spi_sck.IN)\r\n"
-        "spi_cs1.init(spi_cs1.IN)\r\n"
-        "spi_cs2.init(spi_cs2.IN)\r\n"
-        "del spi_cs\r\n"
-        "del spi_mosi\r\n"
-        "del spi_miso\r\n"
-        "del spi_sck\r\n"
-        "del spi_io2\r\n"
-        "del spi_io3\r\n"
-        "del spi_cs1\r\n"
-        "del spi_cs2\r\n"
-    );
+}
+
+void FlashWriter::writeFlash(Board board, const std::string& devicePath, const std::filesystem::path& filePath)
+{
+    static const std::array<int, 8> picoIcePins = {1, 3, 0, 2, 5, 7, 4, 6};
+    static const std::array<int, 8> tt06Pins = {21, 22, 23, 24, 25, 26, 27, 28};
+    static const std::array<int, 8> etrPins = {25, 26, 27, 28, 29, 30, 31, 32};
+    std::span<const int> pins;
+
+    switch (board)
+    {
+        case Board::PicoIce:
+            pins = picoIcePins;
+            break;
+
+        case Board::TinyTapeoutEtr:
+            pins = etrPins;
+            break;
+
+        case Board::TinyTapeout06:
+            pins = tt06Pins;
+            break;
+
+        case Board::Unknown:
+            break;
+    }
+
+    if (pins.empty())
+    {
+        throw std::invalid_argument("Unsupported board");
+    }
+
+    if (!std::filesystem::exists(filePath))
+    {
+        throw std::invalid_argument(std::format("File {} does not exist", filePath.string()));
+    }
+
+    MicroPythonDevice device(devicePath);
+
+    device.execute(initCommand(pins.subspan<0, 8>()));
+
+    auto size = std::filesystem::file_size(filePath);
+    if (size > 16 * 1024 * 1024)
+    {
+        throw std::invalid_argument("File is too large");
+    }
+
+    eraseFlash(device, size);
+    programFlash(device, filePath, size);
+
+    device.execute(cleanupCommand());
 }
 
 } // namespace tt_helper

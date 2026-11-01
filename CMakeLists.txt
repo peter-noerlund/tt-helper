@@ -15,10 +15,10 @@ endif()
 add_executable(tt-helper
     src/base64_encode.cpp
     src/find_device.cpp
+    src/flash_writer.cpp
     src/install_fpga.cpp
     src/main.cpp
     src/micro_python_device.cpp
-    src/write_flash.cpp
 )
 target_compile_features(tt-helper PRIVATE cxx_std_23)
 target_include_directories(tt-helper PRIVATE src)

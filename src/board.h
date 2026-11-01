@@ -7,6 +7,7 @@ enum class Board
 {
     Unknown,
     PicoIce,
+    TinyTapeout06,
     TinyTapeoutEtr
 };
 

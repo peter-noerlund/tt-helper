@@ -27,6 +27,9 @@ std::string findDevice(Board board)
         case Board::TinyTapeoutEtr:
             return findDevice(0x2E8A, 0x0005);
 
+        case Board::TinyTapeout06:
+            throw std::invalid_argument("Auto detection is not supported for Tiny Tapeout 06+");
+
         case Board::Unknown:
             break;
     }
