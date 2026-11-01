@@ -1,13 +1,12 @@
 #include "board.h"
 #include "flash_writer.h"
+#include "fpga.h"
 #include "find_device.h"
-#include "install_fpga.h"
 
 #include <lyra/lyra.hpp>
 
 #include <cstdio>
 #include <iostream>
-#include <filesystem>
 #include <format>
 #include <print>
 #include <stdexcept>
@@ -26,9 +25,9 @@ int main(int argc, char** argv)
     bool verbose = false;
 
     auto cli = lyra::cli()
-        | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, install-fpga)").choices("write-flash", "install-fpga").required()
-        | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load").required()
+        | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, install-fpga, start-fpga, stop-fpga)").choices("write-flash", "install-fpga", "start-fpga", "stop-fpga").required()
         | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
+        | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load")
         | lyra::opt(devicePath, "PATH")["-d"]["--device"]("Path to serial device.")
         | lyra::opt(dryRun)["--dry-run"]("Dry run")
         | lyra::opt(verbose)["-v"]["--verbose"]("Be verbose")
@@ -73,11 +72,31 @@ int main(int argc, char** argv)
 
         if (toolName == "write-flash")
         {
+            if (filePath.empty())
+            {
+                throw std::invalid_argument("Missing filename");
+            }
             FlashWriter::writeFlash(board, devicePath, filePath, dryRun, verbose);
         }
         else if (toolName == "install-fpga")
         {
-            installFpga(board, devicePath, filePath);
+            if (filePath.empty())
+            {
+                throw std::invalid_argument("Missing filename");
+            }
+
+            Fpga fpga(board, devicePath, dryRun, verbose);
+            fpga.install(filePath);
+        }
+        else if (toolName == "start-fpga")
+        {
+            Fpga fpga(board, devicePath, dryRun, verbose);
+            fpga.start();
+        }
+        else if (toolName == "stop-fpga")
+        {
+            Fpga fpga(board, devicePath, dryRun, verbose);
+            fpga.stop();
         }
         else
         {
