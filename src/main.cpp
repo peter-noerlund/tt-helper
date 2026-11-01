@@ -1,4 +1,5 @@
 #include "board.h"
+#include "find_device.h"
 #include "install_fpga.h"
 #include "write_flash.h"
 
@@ -24,7 +25,7 @@ int main(int argc, char** argv)
     auto cli = lyra::cli()
         | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, install-fpga)").choices("write-flash", "install-fpga").required()
         | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load").required()
-        | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-etr")
+        | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-etr").required()
         | lyra::opt(devicePath, "PATH")["-d"]["--device"]("Path to serial device.")
         | lyra::help(showHelp);
 
@@ -54,6 +55,11 @@ int main(int argc, char** argv)
         else
         {
             throw std::logic_error(std::format("Invalid board name: {}", boardName));
+        }
+
+        if (devicePath.empty())
+        {
+            devicePath = findDevice(board);
         }
 
         if (toolName == "write-flash")

@@ -13,6 +13,7 @@ if(PkgConfig_FOUND)
 endif()
 
 add_executable(tt-helper
+    src/find_device.cpp
     src/install_fpga.cpp
     src/main.cpp
     src/micro_python_device.cpp
