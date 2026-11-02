@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 
     auto cli = lyra::cli()
         | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, run-fpga, install-fpga, start-fpga, stop-fpga)").choices("write-flash", "run-fpga", "install-fpga", "start-fpga", "stop-fpga").required()
-        | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
+        | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-06, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
         | lyra::opt(filePath, "FILE")["--file"]("File to load")
         | lyra::opt(mountPath, "PATH")["--mount"]("Mount path")
         | lyra::opt(ttyPath, "PATH")["--tty"]("Path to serial device.")
