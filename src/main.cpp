@@ -73,10 +73,18 @@ int main(int argc, char** argv)
             if (ttyPath.empty())
             {
                 ttyPath = std::move(devicePath.ttyPath);
+                if (!ttyPath.empty())
+                {
+                    std::println("Auto detected TTY path: {}", ttyPath);
+                }
             }
             if (mountPath.empty())
             {
                 mountPath = std::move(devicePath.mountPath);
+                if (!mountPath.empty())
+                {
+                    std::println("Auto detected mount path: {}", mountPath);
+                }
             }
         }
 
