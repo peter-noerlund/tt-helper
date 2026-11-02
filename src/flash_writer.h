@@ -17,7 +17,7 @@ class MicroPythonDevice;
 class FlashWriter
 {
 public:
-    static void writeFlash(Board board, const std::string& devicePath, const std::filesystem::path& filePath, bool dryRun, bool verbose);
+    static void writeFlash(Board board, const std::string& ttyPath, const std::filesystem::path& filePath, bool dryRun, bool verbose);
 
 private:
     static void eraseFlash(MicroPythonDevice& device, std::size_t size);

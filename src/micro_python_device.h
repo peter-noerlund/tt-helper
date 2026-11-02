@@ -11,7 +11,7 @@ namespace tt_helper
 class MicroPythonDevice
 {
 public:
-    explicit MicroPythonDevice(const std::string& devicePath, bool dryRun, bool verbose);
+    explicit MicroPythonDevice(const std::string& ttyPath, bool dryRun, bool verbose);
     ~MicroPythonDevice();
 
     std::string execute(std::string_view command);

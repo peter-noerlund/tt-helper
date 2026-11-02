@@ -5,8 +5,8 @@
 namespace tt_helper
 {
 
-Fpga::Fpga(Board board, const std::string& devicePath, bool dryRun, bool verbose)
-    : m_device(devicePath, dryRun, verbose)
+Fpga::Fpga(Board board, const std::string& ttyPath, bool dryRun, bool verbose)
+    : m_device(ttyPath, dryRun, verbose)
     , m_board(board)
     , m_dryRun(dryRun)
 {
@@ -38,7 +38,12 @@ void Fpga::start()
 
 void Fpga::stop()
 {
-    m_device.execute("fpga.stop()");
+    m_device.execute(
+        "from machine import Pin\r\n"
+        "import ice\r\n"
+        "fpga = ice.fpga(cdone=Pin(26), clock=Pin(24), creset=Pin(27), cram_cs=Pin(9), cram_mosi=Pin(8), cram_sck=Pin(10), frequency=48)\r\n"
+        "fpga.stop()\r\n"
+    );
 }
 
 } // namespace tt_helper

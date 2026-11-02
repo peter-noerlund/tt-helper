@@ -1,7 +1,7 @@
 #include "board.h"
+#include "device_finder.h"
 #include "flash_writer.h"
 #include "fpga.h"
-#include "find_device.h"
 
 #include <lyra/lyra.hpp>
 
@@ -19,7 +19,8 @@ int main(int argc, char** argv)
     bool showHelp = false;
     std::string toolName;
     std::string boardName;
-    std::string devicePath;
+    std::string ttyPath;
+    std::string mountPath;
     std::string filePath;
     bool dryRun = false;
     bool verbose = false;
@@ -27,10 +28,11 @@ int main(int argc, char** argv)
     auto cli = lyra::cli()
         | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, run-fpga, install-fpga, start-fpga, stop-fpga)").choices("write-flash", "run-fpga", "install-fpga", "start-fpga", "stop-fpga").required()
         | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
-        | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load")
-        | lyra::opt(devicePath, "PATH")["-d"]["--device"]("Path to serial device.")
+        | lyra::opt(filePath, "FILE")["--file"]("File to load")
+        | lyra::opt(mountPath, "PATH")["--mount"]("Mount path")
+        | lyra::opt(ttyPath, "PATH")["--tty"]("Path to serial device.")
         | lyra::opt(dryRun)["--dry-run"]("Dry run")
-        | lyra::opt(verbose)["-v"]["--verbose"]("Be verbose")
+        | lyra::opt(verbose)["--verbose"]("Be verbose")
         | lyra::help(showHelp);
 
     auto result = cli.parse({argc, argv});
@@ -65,9 +67,17 @@ int main(int argc, char** argv)
             throw std::logic_error(std::format("Invalid board name: {}", boardName));
         }
 
-        if (devicePath.empty())
+        if (ttyPath.empty() || mountPath.empty())
         {
-            devicePath = findDevice(board);
+            auto devicePath = DeviceFinder::findDevice(board);
+            if (ttyPath.empty())
+            {
+                ttyPath = std::move(devicePath.ttyPath);
+            }
+            if (mountPath.empty())
+            {
+                mountPath = std::move(devicePath.mountPath);
+            }
         }
 
         if (toolName == "write-flash")
@@ -76,7 +86,7 @@ int main(int argc, char** argv)
             {
                 throw std::invalid_argument("Missing filename");
             }
-            FlashWriter::writeFlash(board, devicePath, filePath, dryRun, verbose);
+            FlashWriter::writeFlash(board, ttyPath, filePath, dryRun, verbose);
         }
         else if (toolName == "run-fpga")
         {
@@ -85,7 +95,7 @@ int main(int argc, char** argv)
                 throw std::invalid_argument("Missing filename");
             }
 
-            Fpga fpga(board, devicePath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, dryRun, verbose);
             fpga.run(filePath);
         }
 
@@ -96,17 +106,17 @@ int main(int argc, char** argv)
                 throw std::invalid_argument("Missing filename");
             }
 
-            Fpga fpga(board, devicePath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, dryRun, verbose);
             fpga.install(filePath);
         }
         else if (toolName == "start-fpga")
         {
-            Fpga fpga(board, devicePath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, dryRun, verbose);
             fpga.start();
         }
         else if (toolName == "stop-fpga")
         {
-            Fpga fpga(board, devicePath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, dryRun, verbose);
             fpga.stop();
         }
         else

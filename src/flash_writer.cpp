@@ -216,7 +216,7 @@ void FlashWriter::programFlash(MicroPythonDevice& device, const std::filesystem:
 
 }
 
-void FlashWriter::writeFlash(Board board, const std::string& devicePath, const std::filesystem::path& filePath, bool dryRun, bool verbose)
+void FlashWriter::writeFlash(Board board, const std::string& ttyPath, const std::filesystem::path& filePath, bool dryRun, bool verbose)
 {
     static const std::array<int, 8> picoIcePins = {1, 3, 0, 2, 5, 7, 4, 6};
     static const std::array<int, 8> tt06Pins = {21, 22, 23, 24, 25, 26, 27, 28};
@@ -251,7 +251,7 @@ void FlashWriter::writeFlash(Board board, const std::string& devicePath, const s
         throw std::invalid_argument(std::format("File {} does not exist", filePath.string()));
     }
 
-    MicroPythonDevice device(devicePath, dryRun, verbose);
+    MicroPythonDevice device(ttyPath, dryRun, verbose);
 
     device.execute(initCommand(pins.subspan<0, 8>()));
 

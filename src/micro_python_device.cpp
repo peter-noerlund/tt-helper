@@ -14,13 +14,13 @@
 namespace tt_helper
 {
 
-MicroPythonDevice::MicroPythonDevice(const std::string& devicePath, bool dryRun, bool verbose)
+MicroPythonDevice::MicroPythonDevice(const std::string& ttyPath, bool dryRun, bool verbose)
     : m_dryRun(dryRun)
     , m_verbose(verbose)
 {
     if (!m_dryRun)
     {
-        m_serialPort.emplace(m_context, devicePath);
+        m_serialPort.emplace(m_context, ttyPath);
     }
     init();
 }

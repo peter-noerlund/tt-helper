@@ -10,11 +10,12 @@ find_package(PkgConfig)
 
 if(PkgConfig_FOUND)
     pkg_check_modules(libudev IMPORTED_TARGET "libudev>=221")
+    pkg_check_modules(libmount IMPORTED_TARGET "mount")
 endif()
 
 add_executable(tt-helper
     src/base64_encode.cpp
-    src/find_device.cpp
+    src/device_finder.cpp
     src/fpga.cpp
     src/flash_writer.cpp
     src/main.cpp
@@ -26,7 +27,17 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang"
     target_compile_options(tt-helper PRIVATE -Wall -W -Wextra -Wpedantic)
 endif()
 target_link_libraries(tt-helper PRIVATE asio::asio lyra::lyra)
+
 if(PkgConfig_FOUND AND libudev_FOUND)
     target_link_libraries(tt-helper PRIVATE PkgConfig::libudev)
     target_compile_definitions(tt-helper PRIVATE HAVE_LIBUDEV)
+else()
+    message(STATUS "libudev not found. Device path auto detection will not be supported")
+endif()
+
+if(PkgConfig_FOUND AND libmount_FOUND)
+    target_link_libraries(tt-helper PRIVATE PkgConfig::libmount)
+    target_compile_definitions(tt-helper PRIVATE HAVE_LIBMOUNT)
+else()
+    message(STATUS "libmount not found. FPGA mount point auto detection will not be supported")
 endif()
