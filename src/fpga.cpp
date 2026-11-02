@@ -5,8 +5,9 @@
 namespace tt_helper
 {
 
-Fpga::Fpga(Board board, const std::string& ttyPath, bool dryRun, bool verbose)
+Fpga::Fpga(Board board, const std::string& ttyPath, const std::filesystem::path& mountPath, bool dryRun, bool verbose)
     : m_device(ttyPath, dryRun, verbose)
+    , m_mountPath(mountPath)
     , m_board(board)
     , m_dryRun(dryRun)
 {

@@ -95,7 +95,7 @@ int main(int argc, char** argv)
                 throw std::invalid_argument("Missing filename");
             }
 
-            Fpga fpga(board, ttyPath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, mountPath, dryRun, verbose);
             fpga.run(filePath);
         }
 
@@ -106,17 +106,17 @@ int main(int argc, char** argv)
                 throw std::invalid_argument("Missing filename");
             }
 
-            Fpga fpga(board, ttyPath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, mountPath, dryRun, verbose);
             fpga.install(filePath);
         }
         else if (toolName == "start-fpga")
         {
-            Fpga fpga(board, ttyPath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, mountPath, dryRun, verbose);
             fpga.start();
         }
         else if (toolName == "stop-fpga")
         {
-            Fpga fpga(board, ttyPath, dryRun, verbose);
+            Fpga fpga(board, ttyPath, mountPath, dryRun, verbose);
             fpga.stop();
         }
         else
