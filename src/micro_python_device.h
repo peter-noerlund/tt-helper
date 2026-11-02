@@ -16,6 +16,8 @@ public:
 
     std::string execute(std::string_view command);
 
+    void reset();
+
 private:
     void init();
     void fini();

@@ -65,6 +65,11 @@ void MicroPythonDevice::fini()
     asio::write(*m_serialPort, asio::buffer(resetSequence));
 }
 
+void MicroPythonDevice::reset()
+{
+    init();
+}
+
 std::string MicroPythonDevice::execute(std::string_view command)
 {
     if (command.empty())
@@ -119,7 +124,7 @@ std::string MicroPythonDevice::execute(std::string_view command)
         throw std::runtime_error(std::format("Device threw exception: {}", exception));
     }
 
-    return std::string(responseView.substr(exceptionEnd));
+    return std::string(responseView.substr(0, exceptionStart));
 }
 
 } // namespace tt_helper
