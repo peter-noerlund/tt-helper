@@ -142,6 +142,7 @@ std::string_view SPI::cleanupCommand()
         "spi_sck.init(spi_sck.IN)\r\n"
         "spi_cs1.init(spi_cs1.IN)\r\n"
         "spi_cs2.init(spi_cs2.IN)\r\n"
+        "del spi_ss\r\n"
         "del spi_cs\r\n"
         "del spi_mosi\r\n"
         "del spi_miso\r\n"
@@ -311,16 +312,19 @@ void SPI::enterQuad(Board board, const std::string& ttyPath, bool dryRun, bool v
 {
     auto device = initDevice(board, ttyPath, dryRun, verbose, ChipSelect::PSRAM1);
     device.execute(enterQuadCommand());
+    device.execute(cleanupCommand());
 }
 
 void SPI::pingFlash(Board board, const std::string& ttyPath, bool dryRun, bool verbose)
 {
-    initDevice(board, ttyPath, dryRun, verbose, ChipSelect::Flash);
+    auto device = initDevice(board, ttyPath, dryRun, verbose, ChipSelect::Flash);
+    device.execute(cleanupCommand());
 }
 
 void SPI::pingRAM(Board board, const std::string& ttyPath, bool dryRun, bool verbose)
 {
-    initDevice(board, ttyPath, dryRun, verbose, ChipSelect::PSRAM1);
+    auto device = initDevice(board, ttyPath, dryRun, verbose, ChipSelect::PSRAM1);
+    device.execute(cleanupCommand());
 }
 
 } // namespace tt_helper
