@@ -17,9 +17,9 @@ add_executable(tt-helper
     src/base64_encode.cpp
     src/device_finder.cpp
     src/fpga.cpp
-    src/flash_writer.cpp
     src/main.cpp
     src/micro_python_device.cpp
+    src/spi.cpp
 )
 target_compile_features(tt-helper PRIVATE cxx_std_23)
 target_include_directories(tt-helper PRIVATE src)

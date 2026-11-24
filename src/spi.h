@@ -14,7 +14,7 @@ namespace tt_helper
 
 class MicroPythonDevice;
 
-class FlashWriter
+class SPI
 {
 public:
     static void writeFlash(Board board, const std::string& ttyPath, const std::filesystem::path& filePath, bool dryRun, bool verbose);

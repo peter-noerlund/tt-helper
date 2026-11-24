@@ -1,4 +1,4 @@
-#include "flash_writer.h"
+#include "spi.h"
 
 #include "base64_encode.h"
 #include "micro_python_device.h"
@@ -18,7 +18,7 @@
 namespace tt_helper
 {
 
-std::string FlashWriter::spiCommand(std::span<const std::uint8_t> data, std::size_t recvBytes, std::string_view indent)
+std::string SPI::spiCommand(std::span<const std::uint8_t> data, std::size_t recvBytes, std::string_view indent)
 {
     std::string command = std::format(
             "{0}spi_cs(0)\r\n"
@@ -34,12 +34,12 @@ std::string FlashWriter::spiCommand(std::span<const std::uint8_t> data, std::siz
     return command;
 }
 
-std::string FlashWriter::writeEnableCommand(std::string_view indent)
+std::string SPI::writeEnableCommand(std::string_view indent)
 {
     return spiCommand(std::to_array<std::uint8_t>({0x06}), 0, indent);
 }
 
-std::string FlashWriter::sleepCommand(std::chrono::nanoseconds delay, std::string_view indent)
+std::string SPI::sleepCommand(std::chrono::nanoseconds delay, std::string_view indent)
 {
     using namespace std::chrono_literals;
 
@@ -58,7 +58,7 @@ std::string FlashWriter::sleepCommand(std::chrono::nanoseconds delay, std::strin
     }
 }
 
-std::string FlashWriter::waitForWriteCommand(std::chrono::nanoseconds delay, std::string_view indent)
+std::string SPI::waitForWriteCommand(std::chrono::nanoseconds delay, std::string_view indent)
 {
     return std::format(
             "{0}while True:\r\n"
@@ -72,7 +72,7 @@ std::string FlashWriter::waitForWriteCommand(std::chrono::nanoseconds delay, std
     );
 }
 
-std::string FlashWriter::initCommand(std::span<const int, 8> pins)
+std::string SPI::initCommand(std::span<const int, 8> pins)
 {
     return std::format(
         "from machine import Pin, SoftSPI\r\n"
@@ -103,7 +103,7 @@ std::string FlashWriter::initCommand(std::span<const int, 8> pins)
     );
 }
 
-std::string_view FlashWriter::cleanupCommand()
+std::string_view SPI::cleanupCommand()
 {
     return
         "del spi\r\n"
@@ -123,7 +123,7 @@ std::string_view FlashWriter::cleanupCommand()
         "del spi_cs2\r\n";
 }
 
-void FlashWriter::eraseFlash(MicroPythonDevice& device, std::size_t size)
+void SPI::eraseFlash(MicroPythonDevice& device, std::size_t size)
 {
     using namespace std::chrono_literals;
 
@@ -170,7 +170,7 @@ void FlashWriter::eraseFlash(MicroPythonDevice& device, std::size_t size)
     std::println("");
 }
 
-void FlashWriter::programFlash(MicroPythonDevice& device, const std::filesystem::path& filePath, std::size_t size)
+void SPI::programFlash(MicroPythonDevice& device, const std::filesystem::path& filePath, std::size_t size)
 {
     using namespace std::chrono_literals;
 
@@ -216,7 +216,7 @@ void FlashWriter::programFlash(MicroPythonDevice& device, const std::filesystem:
 
 }
 
-void FlashWriter::writeFlash(Board board, const std::string& ttyPath, const std::filesystem::path& filePath, bool dryRun, bool verbose)
+void SPI::writeFlash(Board board, const std::string& ttyPath, const std::filesystem::path& filePath, bool dryRun, bool verbose)
 {
     static const std::array<int, 8> picoIcePins = {1, 3, 0, 2, 5, 7, 4, 6};
     static const std::array<int, 8> tt06Pins = {21, 22, 23, 24, 25, 26, 27, 28};

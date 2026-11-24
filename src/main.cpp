@@ -1,7 +1,7 @@
 #include "board.h"
 #include "device_finder.h"
-#include "flash_writer.h"
 #include "fpga.h"
+#include "spi.h"
 
 #include <lyra/lyra.hpp>
 
@@ -94,7 +94,7 @@ int main(int argc, char** argv)
             {
                 throw std::invalid_argument("Missing filename");
             }
-            FlashWriter::writeFlash(board, ttyPath, filePath, dryRun, verbose);
+            SPI::writeFlash(board, ttyPath, filePath, dryRun, verbose);
         }
         else if (toolName == "run-fpga")
         {
