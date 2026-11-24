@@ -21,7 +21,7 @@ namespace tt_helper
 std::string SPI::spiCommand(std::span<const std::uint8_t> data, std::size_t recvBytes, std::string_view indent)
 {
     std::string command = std::format(
-            "{0}spi_cs(0)\r\n"
+            "{0}spi_ss(0)\r\n"
             "{0}spi.write(binascii.a2b_base64(\"{1}\"))\r\n",
             indent, base64Encode(data));
     if (recvBytes > 0)
@@ -29,7 +29,7 @@ std::string SPI::spiCommand(std::span<const std::uint8_t> data, std::size_t recv
         std::format_to(std::back_inserter(command), "{}res = spi.read({})\r\n", indent, recvBytes);
     }
 
-    std::format_to(std::back_inserter(command), "{}spi_cs(1)\r\n", indent);
+    std::format_to(std::back_inserter(command), "{}spi_ss(1)\r\n", indent);
 
     return command;
 }
@@ -72,8 +72,37 @@ std::string SPI::waitForWriteCommand(std::chrono::nanoseconds delay, std::string
     );
 }
 
-std::string SPI::initCommand(std::span<const int, 8> pins)
+std::string SPI::initCommand(std::span<const int, 8> pins, ChipSelect chipSelect)
 {
+    std::string idCheck;
+    std::string_view ssPin;
+    switch (chipSelect)
+    {
+        case ChipSelect::Flash:
+            idCheck = std::format(
+                "{}"
+                "if res[0] != 0xEF or res[1] != 0x70 or res[2] != 0x18:\r\n"
+                "    raise Exception(\"Unsupported Flash device\")\r\n",
+                spiCommand(std::to_array<std::uint8_t>({0x9F}), 3));
+            ssPin = "spi_cs";
+            break;
+
+        case ChipSelect::PSRAM1:
+        case ChipSelect::PSRAM2:
+            idCheck = std::format(
+                "{}"
+                "if res[0] != 0x0D or res[1] != 0x5D:\r\n"
+                "    raise Exception(\"Unsupported PSRAM device or device in QPI mode\")\r\n",
+                spiCommand(std::to_array<std::uint8_t>({0x9F, 0x00, 0x00, 0x00}), 2));
+            ssPin = chipSelect == ChipSelect::PSRAM1 ? "spi_cs1" : "spi_cs2";
+            break;
+    }
+
+    if (idCheck.empty() || ssPin.empty())
+    {
+        throw std::logic_error("Invalid ChipSelect");
+    }
+
     return std::format(
         "from machine import Pin, SoftSPI\r\n"
         "import binascii\r\n"
@@ -94,12 +123,12 @@ std::string SPI::initCommand(std::span<const int, 8> pins)
         "spi_cs2(1)\r\n"
         "spi_io2.init(spi_io2.IN)\r\n"
         "spi_io2.init(spi_io3.IN)\r\n"
+        "spi_ss = {}\n"
         "spi = SoftSPI(sck=spi_sck, mosi=spi_mosi, miso=spi_miso)\r\n"
-        "{}"
-        "if res[0] != 0xEF or res[1] != 0x70 or res[2] != 0x18:\r\n"
-        "    raise Exception(\"Unsupported device\")\r\n",
+        "{}",
         pins[0], pins[1], pins[2], pins[3], pins[4], pins[5], pins[6], pins[7],
-        spiCommand(std::to_array<std::uint8_t>({0x9F}), 3)
+        ssPin,
+        idCheck
     );
 }
 
@@ -216,7 +245,7 @@ void SPI::programFlash(MicroPythonDevice& device, const std::filesystem::path& f
 
 }
 
-void SPI::writeFlash(Board board, const std::string& ttyPath, const std::filesystem::path& filePath, bool dryRun, bool verbose)
+MicroPythonDevice SPI::initDevice(Board board, const std::string& ttyPath, bool dryRun, bool verbose, ChipSelect chipSelect)
 {
     static const std::array<int, 8> picoIcePins = {1, 3, 0, 2, 5, 7, 4, 6};
     static const std::array<int, 8> tt06Pins = {21, 22, 23, 24, 25, 26, 27, 28};
@@ -246,15 +275,21 @@ void SPI::writeFlash(Board board, const std::string& ttyPath, const std::filesys
         throw std::invalid_argument("Unsupported board");
     }
 
+    MicroPythonDevice device(ttyPath, dryRun, verbose);
+
+    device.execute(initCommand(pins.subspan<0, 8>(), chipSelect));
+
+    return device;
+}
+
+void SPI::writeFlash(Board board, const std::string& ttyPath, const std::filesystem::path& filePath, bool dryRun, bool verbose)
+{
     if (!std::filesystem::exists(filePath))
     {
         throw std::invalid_argument(std::format("File {} does not exist", filePath.string()));
     }
 
-    MicroPythonDevice device(ttyPath, dryRun, verbose);
-
-    device.execute(initCommand(pins.subspan<0, 8>()));
-
+    auto device = initDevice(board, ttyPath, dryRun, verbose, ChipSelect::Flash);
     auto size = std::filesystem::file_size(filePath);
     if (size > 16 * 1024 * 1024)
     {
@@ -265,6 +300,27 @@ void SPI::writeFlash(Board board, const std::string& ttyPath, const std::filesys
     programFlash(device, filePath, size);
 
     device.execute(cleanupCommand());
+}
+
+std::string SPI::enterQuadCommand()
+{
+    return spiCommand(std::to_array<std::uint8_t>({0x35}));
+}
+
+void SPI::enterQuad(Board board, const std::string& ttyPath, bool dryRun, bool verbose)
+{
+    auto device = initDevice(board, ttyPath, dryRun, verbose, ChipSelect::PSRAM1);
+    device.execute(enterQuadCommand());
+}
+
+void SPI::pingFlash(Board board, const std::string& ttyPath, bool dryRun, bool verbose)
+{
+    initDevice(board, ttyPath, dryRun, verbose, ChipSelect::Flash);
+}
+
+void SPI::pingRAM(Board board, const std::string& ttyPath, bool dryRun, bool verbose)
+{
+    initDevice(board, ttyPath, dryRun, verbose, ChipSelect::PSRAM1);
 }
 
 } // namespace tt_helper

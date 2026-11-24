@@ -15,12 +15,13 @@ namespace tt_helper
 {
 
 MicroPythonDevice::MicroPythonDevice(const std::string& ttyPath, bool dryRun, bool verbose)
-    : m_dryRun(dryRun)
+    : m_context(std::make_unique<asio::io_context>())
+    , m_dryRun(dryRun)
     , m_verbose(verbose)
 {
     if (!m_dryRun)
     {
-        m_serialPort.emplace(m_context, ttyPath);
+        m_serialPort.emplace(*m_context, ttyPath);
     }
     init();
 }
@@ -55,7 +56,7 @@ void MicroPythonDevice::init()
 
 void MicroPythonDevice::fini()
 {
-    if (m_dryRun)
+    if (m_dryRun || !m_serialPort)
     {
         return;
     }

@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     bool verbose = false;
 
     auto cli = lyra::cli()
-        | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, run-fpga, install-fpga, start-fpga, stop-fpga)").choices("write-flash", "run-fpga", "install-fpga", "start-fpga", "stop-fpga").required()
+        | lyra::opt(toolName, "TOOL")["-t"]["--tool"]("Tool to run (write-flash, ping-flash, enter-quad, ping-ram, run-fpga, install-fpga, start-fpga, stop-fpga)").choices("write-flash", "ping-flash", "enter-quad", "ping-ram", "run-fpga", "install-fpga", "start-fpga", "stop-fpga").required()
         | lyra::opt(boardName, "BOARD")["-b"]["--board"]("Board in use (pico-ice, tt-06, tt-etr)").choices("pico-ice", "tt-06", "tt-etr").required()
         | lyra::opt(filePath, "FILE")["-f"]["--file"]("File to load")
         | lyra::opt(mountPath, "PATH")["-m"]["--mount"]("Mount path")
@@ -95,6 +95,18 @@ int main(int argc, char** argv)
                 throw std::invalid_argument("Missing filename");
             }
             SPI::writeFlash(board, ttyPath, filePath, dryRun, verbose);
+        }
+        else if (toolName == "ping-flash")
+        {
+            SPI::pingFlash(board, ttyPath, dryRun, verbose);
+        }
+        else if (toolName == "enter-quad")
+        {
+            SPI::enterQuad(board, ttyPath, dryRun, verbose);
+        }
+        else if (toolName == "ping-ram")
+        {
+            SPI::pingRAM(board, ttyPath, dryRun, verbose);
         }
         else if (toolName == "run-fpga")
         {
